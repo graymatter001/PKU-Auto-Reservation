@@ -165,4 +165,5 @@ cython_debug/
 save.sh
 *.yaml
 !config-sample.yaml
-code.txt
+# 验证码文件 - 支持多学生（学号.txt格式）
+[0-9]*.txt

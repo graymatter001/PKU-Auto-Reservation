@@ -14,7 +14,7 @@ from functools import wraps
 from urllib import parse
 
 import requests
-
+from loguru import logger
 
 class Session(requests.Session):
     def __init__(self, config, notifier=None, *args, **kwargs) -> None:
@@ -214,8 +214,12 @@ class Session(requests.Session):
           "timestamp": 1704038401001
         }
         """
-        # 清空 code.txt
-        with open("code.txt", "w") as f:
+        # 获取学号特定的验证码文件路径
+        student_id = self._config["username"]
+        code_file = f"{student_id}.txt"
+
+        # 清空学号特定的验证码文件
+        with open(code_file, "w") as f:
             f.write("")
 
         res = self.get(
@@ -234,24 +238,34 @@ class Session(requests.Session):
         self.request_2fa_code(sqxxid)
 
         # 自动获取 2FA code
+        student_id = self._config["username"]
+        code_file = f"{student_id}.txt"
 
         if self._config["auto"]:
-            # 不断尝试获取 code.txt 内容，如果为空则等待 1s
+            # 不断尝试获取学号特定的验证码文件内容，如果为空则等待 1s
             code = ""
-            for _ in range(30):
-                with open("code.txt", "r") as f:
-                    code = f.read().strip()
-                if code:
-                    break
-                print("Waiting for code...")
+            for i in range(60):  # 增加等待时间到60秒以支持多学生验证
+                try:
+                    with open(code_file, "r") as f:
+                        code = f.read().strip()
+                    if code:
+                        break
+                except FileNotFoundError:
+                    # 如果文件不存在，创建一个空文件
+                    with open(code_file, "w") as f:
+                        f.write("")
+
+                if i % 10 == 0:  # 每10秒输出一次等待信息
+                    logger.info(f"Waiting for code for student {student_id}... ({i + 1}/60s)")
                 time.sleep(1)
-            # 删除 code.txt
-            with open("code.txt", "w") as f:
+
+            # 清空验证码文件
+            with open(code_file, "w") as f:
                 f.write("")
 
         # 手动输入 2FA code
         else:
-            code = input("Please input the 2FA code: ")
+            code = input(f"Please input the 2FA code for {student_id}: ")
 
         code = re.search(r"\d{6}", code).group()
         assert code, f"{'[Error]':<15}: Invalid 2FA code"
@@ -279,15 +293,17 @@ class Session(requests.Session):
             },
         ).json()
         assert res["success"], res["msg"]
-        print(f"{'[Succeed]':<15}: {appointment['byyrxm']}")
+        logger.success(f"Succeed: {appointment['byyrxm']}")
         if self._notifier:
             self._notifier.send(f"Succeed: {appointment['byyrxm']}")
         return
 
     def submit_all(self):
         """提交所有申请"""
+        # 兼容新旧配置格式 - appointments是新格式传入的visitors数组
+        appointments = self._config.get("appointments", [])
 
-        for appointment in self._config["appointments"]:
+        for appointment in appointments:
             converted_data = {
                 "byyrxm": appointment["name"],
                 "byyrzjh": appointment["id"],
@@ -313,4 +329,4 @@ class BarkNotifier:
                 },
             )
         else:
-            print(body)
+            print(f"Notification: {body}")
