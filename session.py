@@ -238,7 +238,7 @@ class Session(requests.Session):
         if self._config["auto"]:
             # 不断尝试获取 code.txt 内容，如果为空则等待 1s
             code = ""
-            for i in range(30):
+            for _ in range(30):
                 with open("code.txt", "r") as f:
                     code = f.read().strip()
                 if code:
@@ -299,14 +299,18 @@ class Session(requests.Session):
 class BarkNotifier:
     def __init__(self, token):
         self._token = token
+        self.valid = True if token else False
 
     def send(self, body):
-        requests.post(
-            f"https://api.day.app/{self._token}",
-            data={
-                "title": "PKU-Auto-Reservation",
-                "body": body,
-                "icon": "https://cdn.arthals.ink/pku.jpg",
-                "level": "timeSensitive",
-            },
-        )
+        if self._token:
+            requests.post(
+                f"https://api.day.app/{self._token}",
+                data={
+                    "title": "PKU-Auto-Reservation",
+                    "body": body,
+                    "icon": "https://cdn.arthals.ink/pku.jpg",
+                    "level": "timeSensitive",
+                },
+            )
+        else:
+            print(body)

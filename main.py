@@ -19,7 +19,7 @@ with open("config.yaml", "r") as f:
     data = yaml.safe_load(f)
 
 
-def start(notifier=None):
+def start(notifier: BarkNotifier):
     print(f"{'[Start]':<15}: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     s = Session(config=data, notifier=notifier)
     s.login()
@@ -27,11 +27,11 @@ def start(notifier=None):
     try:
         s.submit_all()
         print(f"{'[Succeed]':<15}: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        if notifier:
+        if notifier.valid:
             notifier.send("All Succeed")
     except AssertionError as e:
         print(f"{'[Failed]':<15}: {e} {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        if notifier:
+        if notifier.valid:
             notifier.send(f"Failed: {e}")
 
 
@@ -52,32 +52,36 @@ if __name__ == "__main__":
     print(f"{'[Target]':<15}: {target_time.strftime('%Y-%m-%d %H:%M:%S')}")
     wait_time = (target_time - now).total_seconds()
     wait_time = max(0, wait_time)
+    
+    token = data.get("bark", None)
+    notifier = BarkNotifier(token)
+    
+    # try login
+    s = Session(config=data, notifier=notifier)
+    try:
+        if not s.login():
+            print(f"{'[Failed]':<15}: 验证登录失败，请检查配置")
+            exit(1)
+    except Exception as e:
+        print(f"{'[Failed]':<15}: {e}")
+        exit(1)
 
     print(f"{'[Waiting]':<15}: {wait_time} s")
     if data.get("auto", True):
         # 自动获取 2FA 验证码不需要提前提醒
         # 等待时间差
-        if data.get("bark", None):
-            notifier = BarkNotifier(data["bark"])
-            notifier.send("已启动自动预约脚本")
-        else:
-            notifier = None
+        notifier.send("已启动自动预约脚本")
         time.sleep(wait_time)
     else:
         # 手动获取 2FA 验证码需要提前提醒
         # 等待时间差
-        if data.get("bark", None):
-            notifier = BarkNotifier(data["bark"])
-            notifier.send("已启动自动预约脚本")
-            if wait_time > 30:
-                time.sleep(wait_time - 30)
-                notifier.send("请准备在 30 秒后输入验证码")
-                time.sleep(30)
-            else:
-                notifier.send("请立刻准备输入验证码，剩余时间已不足 30 秒")
-                time.sleep(wait_time)
+        notifier.send("已启动自动预约脚本")
+        if wait_time > 30:
+            time.sleep(wait_time - 30)
+            notifier.send("请准备在 30 秒后输入验证码")
+            time.sleep(30)
         else:
-            notifier = None
+            notifier.send("请立刻准备输入验证码，剩余时间已不足 30 秒")
             time.sleep(wait_time)
 
     # 开始执行任务
