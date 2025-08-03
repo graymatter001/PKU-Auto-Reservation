@@ -48,6 +48,16 @@ def make_reservation(appointment_config, student_config):
     student_id = student_config["username"]
     task_tag = f"appointment_{student_id}_{appointment_config['yyrq']}"
 
+    # 检查是否到了预约开放时间
+    target_day = datetime.strptime(str(appointment_config["yyrq"]), "%Y%m%d")
+    open_time = (target_day - timedelta(days=3)).replace(
+        hour=8, minute=0, second=1, microsecond=0
+    )
+    current_time = datetime.now()
+
+    if current_time < open_time:
+        return
+
     logger.info(f"开始执行预约 - 学生: {student_id}, 日期: {date}")
     console.print(f"[bold blue]🔄 正在为学生 {student_id} 执行预约任务...[/bold blue]")
 
