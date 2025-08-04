@@ -16,10 +16,12 @@ from urllib import parse
 import requests
 from loguru import logger
 
+
 class Session(requests.Session):
     def __init__(self, config, notifier=None, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._config = config
+        self._config["yysj"] = self._normalize_time(self._config["yysj"])
         self._notifier = notifier
         self.headers.update(
             {
@@ -45,6 +47,16 @@ class Session(requests.Session):
 
     def __del__(self):
         self.close()
+
+    def _normalize_time(self, time_value):
+        if isinstance(time_value, str):
+            return time_value
+        elif isinstance(time_value, (int, float)):
+            hours = int(time_value // 60)
+            minutes = int(time_value % 60)
+            return f"{hours:02d}:{minutes:02d}"
+        else:
+            return str(time_value)
 
     def get(self, url, *args, **kwargs):
         """重写 get 方法，验证状态码，转化为 json"""
@@ -144,7 +156,8 @@ class Session(requests.Session):
                 "sqrq": self._config["yyrq"],
             },
         ).json()
-        # print(json)
+        print(self._config["yyrq"])
+        print(json)
         assert json["success"], json["msg"]
         return json
 
@@ -256,7 +269,9 @@ class Session(requests.Session):
                         f.write("")
 
                 if i % 10 == 0:  # 每10秒输出一次等待信息
-                    logger.info(f"Waiting for code for student {student_id}... ({i + 1}/60s)")
+                    logger.info(
+                        f"Waiting for code for student {student_id}... ({i + 1}/60s)"
+                    )
                 time.sleep(1)
 
             # 清空验证码文件
