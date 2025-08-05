@@ -156,8 +156,6 @@ class Session(requests.Session):
                 "sqrq": self._config["yyrq"],
             },
         ).json()
-        print(self._config["yyrq"])
-        print(json)
         assert json["success"], json["msg"]
         return json
 
