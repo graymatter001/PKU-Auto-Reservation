@@ -7,6 +7,7 @@ bark: SqZPSeVtTSUCdrcnjWETYQ # 可选
 # 全局配置
 # 是否全自动化：请参照 README，判断是否可以做到
 auto: true
+totp_mode: "shortcut"
 
 # 预约配置列表
 appointments:
